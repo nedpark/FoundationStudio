@@ -148,6 +148,32 @@ final class FoundationModelService {
         }
     }
 
+    /// Regenerates a title based on the full conversation history.
+    func regenerateTitle(for messages: [Message]) async -> String {
+        do {
+            let titleSession = LanguageModelSession(
+                instructions: "Generate a concise title (3-6 words) for this conversation. Reply with ONLY the title text, nothing else."
+            )
+
+            // Build a summary from the conversation messages
+            let summary = messages
+                .sorted { $0.timestamp < $1.timestamp }
+                .prefix(10)
+                .map { msg in
+                    let role = msg.role == .user ? "User" : "Assistant"
+                    return "\(role): \(String(msg.content.prefix(150)))"
+                }
+                .joined(separator: "\n")
+
+            let result = try await titleSession.respond(to: summary)
+            let raw = result.content.trimmingCharacters(in: .whitespacesAndNewlines)
+            let title = Self.stripMarkdown(raw)
+            return title.isEmpty ? "New Chat" : String(title.prefix(50))
+        } catch {
+            return "New Chat"
+        }
+    }
+
     // MARK: - Helpers
 
     /// Strips common Markdown formatting symbols from a title string.

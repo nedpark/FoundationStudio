@@ -10,6 +10,7 @@ struct ChatView: View {
 
     @State private var inputText = ""
     @State private var isSystemInstructionsExpanded = false
+    @State private var isRegeneratingTitle = false
 
 
     var body: some View {
@@ -65,6 +66,19 @@ struct ChatView: View {
         .toolbar {
             ToolbarItem(placement: .automatic) {
                 Button {
+                    regenerateTitle()
+                } label: {
+                    Label(
+                        "Regenerate Title",
+                        systemImage: "arrow.trianglehead.2.clockwise"
+                    )
+                }
+                .help("Regenerate chat title")
+                .disabled(isRegeneratingTitle || thread.messages.isEmpty)
+            }
+
+            ToolbarItem(placement: .automatic) {
+                Button {
                     withAnimation {
                         isSystemInstructionsExpanded.toggle()
                     }
@@ -80,6 +94,19 @@ struct ChatView: View {
             }
         }
         .navigationTitle(thread.title)
+    }
+
+    // MARK: - Regenerate Title
+
+    private func regenerateTitle() {
+        isRegeneratingTitle = true
+        Task {
+            let title = await modelService.regenerateTitle(for: thread.messages)
+            thread.title = title
+            thread.updatedAt = Date()
+            try? modelContext.save()
+            isRegeneratingTitle = false
+        }
     }
 
     // MARK: - Send Message
